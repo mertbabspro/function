@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Key Oluşturma</title>
+<style>
+body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h2>Device Key Generator</h2>
+<p id="status">Henüz key oluşturulmadı.</p>
+<button id="generateBtn">Key Oluştur</button>
+
+<script>
+async function generateKey() {
+    const status = document.getElementById("status");
+
+    // Hash'i oluştur (IP + userAgent)
+    let ip = "unknown";
+    try {
+        const res = await fetch("https://api64.ipify.org?format=json");
+        const data = await res.json();
+        ip = data.ip;
+    } catch(e) {
+        console.log("IP alınamadı");
+    }
+
+    const deviceInfo = ip + "-" + navigator.userAgent;
+    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(deviceInfo));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const deviceHash = hashArray.map(b => b.toString(16).padStart(2,"0")).join("");
+
+    console.log("Device Hash:", deviceHash);
+
+    // Netlify Function URL
+    const url = "https://animated-dango-05585f.netlify.app/.netlify/functions/generateKey";
+
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceHash: deviceHash })
+        });
+        const data = await res.json();
+        status.innerText = data.message; // Kullanıcıya mesaj göster
+        console.log("Paste.ee Link:", data.pasteLink);
+    } catch (err) {
+        status.innerText = "Key oluşturulamadı!";
+        console.error(err);
+    }
+}
+
+document.getElementById("generateBtn").addEventListener("click", generateKey);
+</script>
+
+</body>
+</html>
